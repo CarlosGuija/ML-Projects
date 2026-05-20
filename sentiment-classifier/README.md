@@ -1,45 +1,116 @@
 # Sentiment Classifier
 
-This project is a sentiment classifier that utilizes machine learning techniques to analyze and classify text data based on sentiment. The classifier is designed to process raw text data, train a model, and evaluate its performance.
+This project trains and evaluates a sentiment classifier for movie reviews using TensorFlow/Keras.
+
+The current pipeline reads the IMDB dataset, preprocesses the review text, trains a neural network with a `TextVectorization` layer, evaluates it on a held-out test split, and saves the trained model under `models/`.
 
 ## Project Structure
 
+```text
+sentiment-classifier/
++-- src/
+|   +-- data_preprocessing.py  # Load, clean, and split the dataset
+|   +-- evaluate_model.py      # Evaluate a saved model
+|   +-- model.py               # Model architecture
+|   +-- train.py               # Training pipeline
+|   +-- utils.py               # Model save/load helpers
++-- data/
+|   +-- raw/
+|   |   +-- IMDB_Dataset.csv   # Raw IMDB dataset
+|   +-- processed/             # Optional evaluation artifacts
++-- models/                    # Saved trained models
++-- notebooks/                 # Exploration notebooks
++-- requirements.txt
++-- README.md
 ```
-sentiment-classifier
-├── src
-│   ├── data_preprocessing.py  # Functions for loading and preprocessing the dataset
-│   ├── model.py               # Defines the machine learning model architecture
-│   ├── train.py               # Orchestrates the training process
-│   └── utils.py               # Utility functions for evaluation and visualization
-├── data
-│   └── raw
-│       └── dataset.csv        # Raw dataset containing text and sentiment labels
-├── models                     # Directory for storing trained model files
-├── notebooks
-│   └── exploration.ipynb      # Jupyter notebook for exploratory data analysis
-├── requirements.txt           # Lists Python dependencies for the project
-└── README.md                  # Documentation for the project
+
+## Setup
+
+From the project root:
+
+```powershell
+pip install -r requirements.txt
 ```
 
-## Setup Instructions
+If you are using the local virtual environment:
 
-1. Clone the repository:
-   ```
-   git clone <repository-url>
-   cd sentiment-classifier
-   ```
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
 
-2. Install the required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+## Train a Model
 
-## Usage Guidelines
+Run:
 
-- To preprocess the dataset, run the `data_preprocessing.py` script.
-- Use the `train.py` script to train the sentiment model.
-- Explore the dataset and visualize insights using the `exploration.ipynb` notebook.
+```powershell
+.\.venv\Scripts\python.exe src/train.py
+```
 
-## Contributing
+This does the full training flow:
 
-Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
+1. Loads `data/raw/IMDB_Dataset.csv`.
+2. Cleans the text.
+3. Creates train, validation, and test splits.
+4. Trains the model.
+5. Evaluates once on the held-out test set.
+6. Saves the trained model to `models/` as a timestamped `.keras` file.
+
+By default, `train.py` only saves the model. It does not write extra processed datasets.
+
+## Save Evaluation Artifacts
+
+Use this only if you want to evaluate the saved model later with `evaluate_model.py`:
+
+```powershell
+.\.venv\Scripts\python.exe src/train.py --save-evaluation-artifacts
+```
+
+This still saves the model in `models/`, and additionally writes:
+
+```text
+data/processed/test_dataset.csv
+data/processed/label_classes.json
+```
+
+These files let `evaluate_model.py` reuse the same held-out test dataset and label mapping.
+
+## Evaluate a Saved Model
+
+After training with `--save-evaluation-artifacts`, evaluate a saved model like this:
+
+```powershell
+.\.venv\Scripts\python.exe src/evaluate_model.py models/sentiment_model_YYYYMMDD_HHMMSS.keras
+```
+
+Example:
+
+```powershell
+.\.venv\Scripts\python.exe src/evaluate_model.py models/sentiment_model_20260520_182924.keras
+```
+
+By default, `evaluate_model.py` reads:
+
+```text
+data/processed/test_dataset.csv
+data/processed/label_classes.json
+```
+
+You can override those paths:
+
+```powershell
+.\.venv\Scripts\python.exe src/evaluate_model.py models/sentiment_model_YYYYMMDD_HHMMSS.keras --test-data-path data/processed/test_dataset.csv --label-classes-path data/processed/label_classes.json
+```
+
+## Typical Workflow
+
+For normal use, run only:
+
+```powershell
+.\.venv\Scripts\python.exe src/train.py
+```
+
+Use `evaluate_model.py` when you want to reload a saved model later and compare its metrics without retraining. In that case, train once with:
+
+```powershell
+.\.venv\Scripts\python.exe src/train.py --save-evaluation-artifacts
+```

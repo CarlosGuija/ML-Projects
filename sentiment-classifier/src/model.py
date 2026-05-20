@@ -1,18 +1,31 @@
+import tensorflow as tf
+from tensorflow.keras import regularizers
+from tensorflow.keras.layers import Dense, Dropout, Input
+
 class SentimentModel:
-    def __init__(self, input_shape, num_classes):
-        self.input_shape = input_shape
+    def __init__(self, num_classes, vocab_size=40000, vectorizer=None):
         self.num_classes = num_classes
+        self.vocab_size = vocab_size
+        self.vectorizer = vectorizer
         self.model = None
 
     def build_model(self):
-        from tensorflow.keras.models import Sequential
-        from tensorflow.keras.layers import Dense, Embedding, LSTM, SpatialDropout1D
-
-        self.model = Sequential()
-        self.model.add(Embedding(input_dim=5000, output_dim=128, input_length=self.input_shape))
-        self.model.add(SpatialDropout1D(0.2))
-        self.model.add(LSTM(100, dropout=0.2, recurrent_dropout=0.2))
-        self.model.add(Dense(self.num_classes, activation='softmax'))
+        inputs = Input(shape=(), dtype=tf.string)
+        x = self.vectorizer(inputs)
+        x = Dense(
+            128,
+            activation='relu',
+            kernel_regularizer=regularizers.l2(1e-4)
+        )(x)
+        x = Dropout(0.4)(x)
+        x = Dense(
+            64,
+            activation='relu',
+            kernel_regularizer=regularizers.l2(1e-4)
+        )(x)
+        x = Dropout(0.3)(x)
+        outputs = Dense(self.num_classes, activation='softmax')(x)
+        self.model = tf.keras.Model(inputs, outputs)
 
         self.model.compile(
             loss='sparse_categorical_crossentropy',
@@ -20,8 +33,11 @@ class SentimentModel:
             metrics=['accuracy']
         )
 
-    def train(self, X_train, y_train, batch_size, epochs):
-        self.model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, verbose=2)
-
-    def save(self, filepath):
-        self.model.save(filepath)
+    def train(self, train_ds, validation_data=None, epochs=10, callbacks=None):
+        return self.model.fit(
+            train_ds,
+            validation_data=validation_data,
+            epochs=epochs,
+            callbacks=callbacks,
+            verbose=2
+        )
