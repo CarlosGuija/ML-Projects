@@ -3,9 +3,9 @@ import json
 
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+from tensorflow.keras.models import load_model
 
 from train import build_dataset
-from utils import load_model
 
 
 def parse_args():
@@ -14,7 +14,7 @@ def parse_args():
     )
     parser.add_argument(
         'model_path',
-        help='Path to the trained model directory or .h5 file.'
+        help='Path to the trained .keras model file.'
     )
     parser.add_argument(
         '--test-data-path',
@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument(
         '--batch-size',
         type=int,
-        default=64,
+        default=128,
         help='Batch size used for evaluation.'
     )
     return parser.parse_args()

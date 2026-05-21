@@ -1,14 +1,22 @@
 import argparse
-import os
 import datetime
 import json
+from pathlib import Path
+
 import tensorflow as tf
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.layers import TextVectorization
+
 from model import SentimentModel
 from data_preprocessing import load_and_preprocess_data
-from utils import save_model
+
+DATA_PATH = Path('data/raw/IMDB_Dataset.csv')
+PROCESSED_DATA_DIR = Path('data/processed')
+MODELS_DIR = Path('models')
+MAX_TOKENS = 50000
+BATCH_SIZE = 128
+EPOCHS = 15
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train the sentiment classifier.')
@@ -26,17 +34,17 @@ def build_dataset(texts, labels, batch_size=64, shuffle=True):
         ds = ds.shuffle(buffer_size=len(texts), reshuffle_each_iteration=True)
     return ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
-def save_evaluation_artifacts(test_data, encoder, output_dir='data/processed'):
-    os.makedirs(output_dir, exist_ok=True)
+def save_evaluation_artifacts(test_data, encoder, output_dir=PROCESSED_DATA_DIR):
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    test_data.to_csv(os.path.join(output_dir, 'test_dataset.csv'), index=False)
-    with open(os.path.join(output_dir, 'label_classes.json'), 'w') as label_file:
+    test_data.to_csv(output_dir / 'test_dataset.csv', index=False)
+    with open(output_dir / 'label_classes.json', 'w') as label_file:
         json.dump(encoder.classes_.tolist(), label_file)
 
 def main():
     args = parse_args()
 
-    train_data, test_data = load_and_preprocess_data('data/raw/IMDB_Dataset.csv')
+    train_data, test_data = load_and_preprocess_data(DATA_PATH)
     train_data, val_data = train_test_split(
         train_data,
         test_size=0.2,
@@ -44,9 +52,8 @@ def main():
         stratify=train_data['label']
     )
 
-    max_tokens = 40000
     vectorizer = TextVectorization(
-        max_tokens=max_tokens,
+        max_tokens=MAX_TOKENS,
         standardize='lower_and_strip_punctuation',
         ngrams=2,
         output_mode='tf_idf'
@@ -66,14 +73,14 @@ def main():
 
     num_classes = len(encoder.classes_)
 
-    train_ds = build_dataset(X_train, y_train, batch_size=128, shuffle=True)
-    val_ds = build_dataset(X_val, y_val, batch_size=128, shuffle=False)
-    test_ds = build_dataset(X_test, y_test, batch_size=128, shuffle=False)
+    train_ds = build_dataset(X_train, y_train, batch_size=BATCH_SIZE, shuffle=True)
+    val_ds = build_dataset(X_val, y_val, batch_size=BATCH_SIZE, shuffle=False)
+    test_ds = build_dataset(X_test, y_test, batch_size=BATCH_SIZE, shuffle=False)
 
     callbacks = [
         tf.keras.callbacks.EarlyStopping(
             monitor='val_loss',
-            patience=2,
+            patience=4,
             restore_best_weights=True
         ),
         tf.keras.callbacks.ReduceLROnPlateau(
@@ -86,11 +93,10 @@ def main():
 
     model = SentimentModel(
         num_classes=num_classes,
-        vocab_size=max_tokens,
         vectorizer=vectorizer
     )
     model.build_model()
-    model.train(train_ds, validation_data=val_ds, epochs=15, callbacks=callbacks)
+    model.train(train_ds, validation_data=val_ds, epochs=EPOCHS, callbacks=callbacks)
 
     # Evaluar solo al final con data no usada durante entrenamiento ni validacion.
     print('\nEvaluating on the test dataset...')
@@ -99,10 +105,9 @@ def main():
     print(f'Test accuracy: {test_accuracy:.4f}')
 
     # Guardar el modelo en formato Keras nativo.
-    models_dir = 'models'
-    os.makedirs(models_dir, exist_ok=True)
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    save_model(model.model, f'{models_dir}/sentiment_model_{timestamp}.keras')
+    model.model.save(MODELS_DIR / f'sentiment_model_{timestamp}.keras')
 
 if __name__ == "__main__":
     main()

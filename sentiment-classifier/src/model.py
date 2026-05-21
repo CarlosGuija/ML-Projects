@@ -3,9 +3,8 @@ from tensorflow.keras import regularizers
 from tensorflow.keras.layers import Dense, Dropout, Input
 
 class SentimentModel:
-    def __init__(self, num_classes, vocab_size=40000, vectorizer=None):
+    def __init__(self, num_classes, vectorizer):
         self.num_classes = num_classes
-        self.vocab_size = vocab_size
         self.vectorizer = vectorizer
         self.model = None
 
@@ -13,7 +12,7 @@ class SentimentModel:
         inputs = Input(shape=(), dtype=tf.string)
         x = self.vectorizer(inputs)
         x = Dense(
-            128,
+            256,
             activation='relu',
             kernel_regularizer=regularizers.l2(1e-4)
         )(x)

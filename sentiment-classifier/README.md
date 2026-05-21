@@ -13,13 +13,11 @@ sentiment-classifier/
 |   +-- evaluate_model.py      # Evaluate a saved model
 |   +-- model.py               # Model architecture
 |   +-- train.py               # Training pipeline
-|   +-- utils.py               # Model save/load helpers
 +-- data/
 |   +-- raw/
 |   |   +-- IMDB_Dataset.csv   # Raw IMDB dataset
 |   +-- processed/             # Optional evaluation artifacts
 +-- models/                    # Saved trained models
-+-- notebooks/                 # Exploration notebooks
 +-- requirements.txt
 +-- README.md
 ```
