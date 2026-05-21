@@ -1,0 +1,2 @@
+timestamp,model_path,test_loss,test_accuracy,epochs_requested,epochs_trained
+20260521_165432,models/sentiment_model_20260521_165432.keras,0.3086,0.9134,15,5

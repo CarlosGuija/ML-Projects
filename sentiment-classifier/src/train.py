@@ -1,6 +1,6 @@
 import argparse
+import csv
 import datetime
-import json
 from pathlib import Path
 
 import tensorflow as tf
@@ -12,20 +12,17 @@ from model import SentimentModel
 from data_preprocessing import load_and_preprocess_data
 
 DATA_PATH = Path('data/raw/IMDB_Dataset.csv')
-PROCESSED_DATA_DIR = Path('data/processed')
 MODELS_DIR = Path('models')
+TRAINING_LOG_PATH = Path('training_log.csv')
 MAX_TOKENS = 50000
 BATCH_SIZE = 128
 EPOCHS = 15
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Train the sentiment classifier.')
-    parser.add_argument(
-        '--save-evaluation-artifacts',
-        action='store_true',
-        help='Save the held-out test dataset and label classes under data/processed.'
-    )
     return parser.parse_args()
+
 
 def build_dataset(texts, labels, batch_size=64, shuffle=True):
     ds = tf.data.Dataset.from_tensor_slices((texts, labels))
@@ -34,15 +31,27 @@ def build_dataset(texts, labels, batch_size=64, shuffle=True):
         ds = ds.shuffle(buffer_size=len(texts), reshuffle_each_iteration=True)
     return ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
-def save_evaluation_artifacts(test_data, encoder, output_dir=PROCESSED_DATA_DIR):
-    output_dir.mkdir(parents=True, exist_ok=True)
 
-    test_data.to_csv(output_dir / 'test_dataset.csv', index=False)
-    with open(output_dir / 'label_classes.json', 'w') as label_file:
-        json.dump(encoder.classes_.tolist(), label_file)
+def append_training_log(log_path, row):
+    fieldnames = [
+        'timestamp',
+        'model_path',
+        'test_loss',
+        'test_accuracy',
+        'epochs_requested',
+        'epochs_trained'
+    ]
+    file_exists = log_path.exists()
+
+    with open(log_path, 'a', newline='') as log_file:
+        writer = csv.DictWriter(log_file, fieldnames=fieldnames)
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(row)
+
 
 def main():
-    args = parse_args()
+    parse_args()
 
     train_data, test_data = load_and_preprocess_data(DATA_PATH)
     train_data, val_data = train_test_split(
@@ -68,8 +77,6 @@ def main():
     y_train = encoder.fit_transform(train_data['label'])
     y_val = encoder.transform(val_data['label'])
     y_test = encoder.transform(test_data['label'])
-    if args.save_evaluation_artifacts:
-        save_evaluation_artifacts(test_data, encoder)
 
     num_classes = len(encoder.classes_)
 
@@ -96,7 +103,7 @@ def main():
         vectorizer=vectorizer
     )
     model.build_model()
-    model.train(train_ds, validation_data=val_ds, epochs=EPOCHS, callbacks=callbacks)
+    history = model.train(train_ds, validation_data=val_ds, epochs=EPOCHS, callbacks=callbacks)
 
     # Evaluar solo al final con data no usada durante entrenamiento ni validacion.
     print('\nEvaluating on the test dataset...')
@@ -107,7 +114,21 @@ def main():
     # Guardar el modelo en formato Keras nativo.
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    model.model.save(MODELS_DIR / f'sentiment_model_{timestamp}.keras')
+    model_path = MODELS_DIR / f'sentiment_model_{timestamp}.keras'
+    model.model.save(model_path)
+
+    append_training_log(
+        TRAINING_LOG_PATH,
+        {
+            'timestamp': timestamp,
+            'model_path': model_path.as_posix(),
+            'test_loss': f'{test_loss:.4f}',
+            'test_accuracy': f'{test_accuracy:.4f}',
+            'epochs_requested': EPOCHS,
+            'epochs_trained': len(history.epoch)
+        }
+    )
+    print(f'Training log updated: {TRAINING_LOG_PATH}')
 
 if __name__ == "__main__":
     main()
