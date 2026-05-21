@@ -1,6 +1,7 @@
 import argparse
 import csv
 import datetime
+import json
 from pathlib import Path
 
 import tensorflow as tf
@@ -48,6 +49,14 @@ def append_training_log(log_path, row):
         if not file_exists:
             writer.writeheader()
         writer.writerow(row)
+
+
+def save_model_metadata(metadata_path, encoder):
+    metadata = {
+        'label_classes': encoder.classes_.tolist()
+    }
+    with open(metadata_path, 'w') as metadata_file:
+        json.dump(metadata, metadata_file, indent=2)
 
 
 def main():
@@ -115,7 +124,9 @@ def main():
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     model_path = MODELS_DIR / f'sentiment_model_{timestamp}.keras'
+    metadata_path = model_path.with_suffix('.json')
     model.model.save(model_path)
+    save_model_metadata(metadata_path, encoder)
 
     append_training_log(
         TRAINING_LOG_PATH,
@@ -129,6 +140,7 @@ def main():
         }
     )
     print(f'Training log updated: {TRAINING_LOG_PATH}')
+    print(f'Model metadata saved: {metadata_path}')
 
 if __name__ == "__main__":
     main()

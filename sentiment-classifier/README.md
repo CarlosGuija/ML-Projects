@@ -12,8 +12,11 @@ sentiment-classifier/
 +-- src/
 |   +-- data_preprocessing.py  # Load, clean, and split the dataset
 |   +-- model.py               # Model architecture
+|   +-- predict.py             # Predict sentiment for new text
 |   +-- train.py               # Training pipeline
 +-- data/
+|   +-- external/              # New external datasets for prediction
+|   +-- predictions/           # Prediction outputs
 |   +-- raw/
 |   |   +-- IMDB_Dataset.csv   # Raw IMDB dataset
 +-- models/                    # Saved trained models
@@ -52,7 +55,8 @@ This does the full training flow:
 4. Trains the model.
 5. Evaluates once on the held-out test set.
 6. Saves the trained model to `models/` as a timestamped `.keras` file.
-7. Appends the model path, test loss, and test accuracy to `training_log.csv`.
+7. Saves the model label metadata next to the model as a timestamped `.json` file.
+8. Appends the model path, test loss, and test accuracy to `training_log.csv`.
 
 The log is a CSV with one row per training run:
 
@@ -66,6 +70,52 @@ Example:
 timestamp,model_path,test_loss,test_accuracy,epochs_requested,epochs_trained
 20260521_163432,models/sentiment_model_20260521_163432.keras,0.2741,0.8920,15,8
 ```
+
+## Predict New Text
+
+After training at least one model, run:
+
+```powershell
+.\.venv\Scripts\python.exe src/predict.py --text "This movie was surprisingly good"
+```
+
+By default, this uses the latest saved model in `models/`.
+
+To use a specific model:
+
+```powershell
+.\.venv\Scripts\python.exe src/predict.py --model models/sentiment_model_YYYYMMDD_HHMMSS.keras --text "This movie was surprisingly good"
+```
+
+## Predict a Dataset
+
+Save external CSV files under:
+
+```text
+data/external/
+```
+
+The CSV must contain a `text` column:
+
+```csv
+text
+"This movie was surprisingly good"
+"I hated the ending"
+```
+
+Then run:
+
+```powershell
+.\.venv\Scripts\python.exe src/predict.py --input data/external/new_reviews.csv
+```
+
+By default, predictions are saved under `data/predictions/`:
+
+```text
+data/predictions/new_reviews_predictions.csv
+```
+
+The output includes the original columns plus `prediction` and one probability column per class.
 
 ## Typical Workflow
 
