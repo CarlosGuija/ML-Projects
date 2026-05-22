@@ -1,63 +1,82 @@
 # Sentiment Classifier
 
-This project trains and evaluates a sentiment classifier for movie reviews using TensorFlow/Keras.
+Miniapp and command-line tools for training and using a TensorFlow/Keras sentiment classifier for movie reviews.
 
-The current pipeline reads the IMDB dataset, preprocesses the review text, trains a neural network with a `TextVectorization` layer, evaluates it on a held-out test split, and saves the trained model under `models/`.
-Each training run also appends the final test metrics to `training_log.csv`.
+The recommended way to use the project is the Streamlit app. The command-line prediction script is still available for quick tests or automation.
 
-## Project Structure
+## Quick Start
 
-```text
-sentiment-classifier/
-+-- src/
-|   +-- data_preprocessing.py  # Load, clean, and split the dataset
-|   +-- model.py               # Model architecture
-|   +-- predict.py             # Predict sentiment for new text
-|   +-- train.py               # Training pipeline
-+-- data/
-|   +-- external/              # New external datasets for prediction
-|   +-- predictions/           # Prediction outputs
-|   +-- raw/
-|   |   +-- IMDB_Dataset.csv   # Raw IMDB dataset
-+-- models/                    # Saved trained models
-+-- training_log.csv           # Historical test metrics for training runs
-+-- requirements.txt
-+-- README.md
-```
-
-## Setup
-
-From the project root:
-
-```powershell
-pip install -r requirements.txt
-```
-
-If you are using the local virtual environment:
+From the project root, install dependencies:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-## Recommended Use: Streamlit App
-
-After training at least one model, run the app from the project root:
+Then open the app:
 
 ```powershell
 .\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
-The app opens in your browser and lets you choose a saved model from `models/`.
-If the browser does not open automatically, go to `http://localhost:8501`.
+Streamlit should open the browser automatically. If it does not, go to:
 
-You can predict sentiment in two ways:
+```text
+http://localhost:8501
+```
 
-1. `Texto`: write one review/comment in the text box and press the prediction button.
-2. `Database`: upload a CSV file, or type a local CSV path, with a `text` column.
+## Project Structure
+
+```text
+sentiment-classifier/
++-- app.py                         # Streamlit miniapp
++-- requirements.txt               # Python dependencies
++-- training_log.csv               # Training run history
++-- .streamlit/
+|   +-- config.toml                 # Streamlit launch settings
++-- src/
+|   +-- data_preprocessing.py       # Load and clean data
+|   +-- model.py                    # Neural network architecture
+|   +-- predict.py                  # Command-line prediction and shared prediction functions
+|   +-- train.py                    # Training pipeline
++-- data/
+|   +-- raw/                        # Local training dataset, ignored by git
+|   |   +-- IMDB_Dataset.csv
+|   +-- external/                   # Local CSV files for prediction, ignored by git
+|   +-- predictions/                # Local prediction outputs, ignored by git
++-- models/                         # Local saved Keras models, ignored by git
+```
+
+Some local files are intentionally ignored by git because they can be large or machine-specific:
+
+- `data/raw/IMDB_Dataset.csv`
+- `models/`
+- CSV files under `data/external/`
+- CSV files under `data/predictions/`
+- `.venv/`
+
+## Recommended Use: Streamlit App
+
+Run:
+
+```powershell
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+The app lets you choose a trained model from `models/` and predict sentiment in two ways.
+
+`Texto`: write one review/comment in the text box and press the prediction button.
+
+`Database`: upload a CSV file, or type a local CSV path. The CSV must have a column named `text`.
 
 For CSV/database predictions, the app shows the results in the browser and lets you download them as a CSV.
 
 ## Train a Model
+
+The training script expects the IMDB dataset at:
+
+```text
+data/raw/IMDB_Dataset.csv
+```
 
 Run:
 
@@ -65,37 +84,28 @@ Run:
 .\.venv\Scripts\python.exe src/train.py
 ```
 
-This does the full training flow:
+Training does this:
 
-1. Loads `data/raw/IMDB_Dataset.csv`.
-2. Cleans the text.
-3. Creates train, validation, and test splits.
-4. Trains the model.
-5. Evaluates once on the held-out test set.
-6. Saves the trained model to `models/` as a timestamped `.keras` file.
-7. Saves the model label metadata next to the model as a timestamped `.json` file.
-8. Appends the model path, test loss, and test accuracy to `training_log.csv`.
+1. Loads and cleans the IMDB dataset.
+2. Creates train, validation, and test splits.
+3. Builds a model with a `TextVectorization` layer and dense neural network.
+4. Trains with early stopping and learning-rate reduction.
+5. Evaluates once on the test set.
+6. Saves the model in `models/` as `sentiment_model_YYYYMMDD_HHMMSS.keras`.
+7. Saves label metadata next to the model as `sentiment_model_YYYYMMDD_HHMMSS.json`.
+8. Appends the final metrics to `training_log.csv`.
 
-The log is a CSV with one row per training run:
+`training_log.csv` has one row per training run:
 
 ```text
 timestamp,model_path,test_loss,test_accuracy,epochs_requested,epochs_trained
 ```
 
-Example:
-
-```csv
-timestamp,model_path,test_loss,test_accuracy,epochs_requested,epochs_trained
-20260521_163432,models/sentiment_model_20260521_163432.keras,0.2741,0.8920,15,8
-```
-
 ## Alternative: Command-Line Prediction
 
-You can still use `src/predict.py` directly from the terminal. This is useful for quick checks, scripts, or when you do not want to open the Streamlit app.
+Use `src/predict.py` when you want to predict from the terminal instead of opening the app.
 
-### Predict New Text
-
-After training at least one model, run:
+### Predict One Text
 
 ```powershell
 .\.venv\Scripts\python.exe src/predict.py --text "This movie was surprisingly good"
@@ -109,13 +119,7 @@ To use a specific model:
 .\.venv\Scripts\python.exe src/predict.py --model models/sentiment_model_YYYYMMDD_HHMMSS.keras --text "This movie was surprisingly good"
 ```
 
-### Predict a Dataset
-
-Save external CSV files under:
-
-```text
-data/external/
-```
+### Predict a CSV
 
 The CSV must contain a `text` column:
 
@@ -125,27 +129,36 @@ text
 "I hated the ending"
 ```
 
-Then run:
+Print predictions in the terminal without saving a file:
 
 ```powershell
 .\.venv\Scripts\python.exe src/predict.py --input data/external/new_reviews.csv
 ```
 
-By default, this prints the predictions in the terminal and does not save a file.
-
-To save predictions, pass an explicit `--output` path:
+Save predictions only when you explicitly pass `--output`:
 
 ```powershell
 .\.venv\Scripts\python.exe src/predict.py --input data/external/new_reviews.csv --output data/predictions/new_reviews_predictions.csv
 ```
 
-The output includes the original columns plus `prediction` and one probability column per class.
+The output includes the original columns plus:
+
+- `prediction`
+- one probability column per class, for example `negative_probability` and `positive_probability`
 
 ## Typical Workflow
 
-For normal use:
+1. Put `IMDB_Dataset.csv` in `data/raw/`.
+2. Train a model:
 
 ```powershell
 .\.venv\Scripts\python.exe src/train.py
+```
+
+3. Open the app:
+
+```powershell
 .\.venv\Scripts\python.exe -m streamlit run app.py
 ```
+
+4. Predict using `Texto` or `Database`.
