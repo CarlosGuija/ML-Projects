@@ -117,6 +117,19 @@ data/predictions/new_reviews_predictions.csv
 
 The output includes the original columns plus `prediction` and one probability column per class.
 
+## Streamlit Miniapp
+
+Run the miniapp from the project root:
+
+```powershell
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+The app lets you choose a saved model and predict from either:
+
+1. A text box for one review/comment.
+2. A CSV database with a `text` column.
+
 ## Typical Workflow
 
 For normal use, run only:

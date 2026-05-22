@@ -6,7 +6,6 @@ from pathlib import Path
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 import pandas as pd
-from tensorflow.keras.models import load_model
 
 from data_preprocessing import clean_text_series
 
@@ -93,6 +92,8 @@ def default_output_path(input_path):
 
 def main():
     args = parse_args()
+
+    from tensorflow.keras.models import load_model
 
     model_path = args.model or find_latest_model()
     model = load_model(model_path)
