@@ -37,7 +37,7 @@ def parse_args():
         '--output',
         type=Path,
         default=None,
-        help='Path for CSV predictions. Defaults to data/predictions/<input-name>_predictions.csv.'
+        help='Optional path to save CSV predictions. If omitted, predictions are printed only.'
     )
     return parser.parse_args()
 
@@ -109,9 +109,14 @@ def main():
             print(f'  {label}: {probability:.4f}')
         return
 
-    output_path = args.output or default_output_path(args.input)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
     predictions = predict_dataframe(model, label_classes, args.input)
+
+    if not args.output:
+        print(predictions.to_string(index=False))
+        return
+
+    output_path = args.output
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     predictions.to_csv(output_path, index=False)
     print(f'Predictions saved: {output_path}')
 
