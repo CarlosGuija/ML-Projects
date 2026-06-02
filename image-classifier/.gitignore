@@ -1,0 +1,12 @@
+# .NET
+bin/
+obj/
+
+# Data and models
+data/
+models/
+outputs/
+
+# System files
+.DS_Store
+Thumbs.db
