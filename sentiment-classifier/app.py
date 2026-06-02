@@ -52,33 +52,33 @@ def render_probabilities(label_classes, probabilities):
 
 def render_text_mode(model_path, label_classes):
     review_text = st.text_area(
-        "Texto",
+        "Text",
         height=180,
-        placeholder="Escribe una review, comentario o frase para clasificar...",
+        placeholder="Write a review, comment or phrase to classify...",
     )
 
-    if st.button("Predecir texto", type="primary", use_container_width=True):
+    if st.button("Predict Text", type="primary", use_container_width=True):
         if not review_text.strip():
-            st.warning("Escribe un texto antes de predecir.")
+            st.warning("Write a text before predicting.")
             return
 
-        with st.spinner("Cargando modelo y generando prediccion..."):
+        with st.spinner("Loading model and generating prediction..."):
             model, label_classes = load_sentiment_model(str(model_path))
             prediction, probabilities = predict_sentiment(model, label_classes, review_text)
 
-        st.subheader(f"Prediccion: {prediction}")
+        st.subheader(f"Prediction: {prediction}")
         render_probabilities(label_classes, probabilities)
 
 
 def render_database_mode(model_path, label_classes):
-    st.caption(f"El CSV debe tener una columna llamada `{TEXT_COLUMN}`.")
-    uploaded_file = st.file_uploader("Subir CSV", type=["csv"])
+    st.caption(f"The CSV must have a column named `{TEXT_COLUMN}`.")
+    uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
     local_path = st.text_input(
-        "O usar ruta local",
+        "Or use local path",
         placeholder="data/external/sample_reviews.csv",
     )
 
-    if st.button("Predecir database", type="primary", use_container_width=True):
+    if st.button("Predict Database", type="primary", use_container_width=True):
         input_path = None
         temp_file = None
 
@@ -90,26 +90,26 @@ def render_database_mode(model_path, label_classes):
         elif local_path.strip():
             input_path = Path(local_path.strip())
         else:
-            st.warning("Sube un CSV o escribe una ruta local.")
+            st.warning("Upload a CSV or write a local path.")
             return
 
         try:
-            with st.spinner("Cargando modelo y generando predicciones..."):
+            with st.spinner("Loading model and generating predictions..."):
                 model, label_classes = load_sentiment_model(str(model_path))
                 predictions = predict_dataframe(model, label_classes, input_path)
         except Exception as error:
-            st.error(f"No se pudo generar la prediccion: {error}")
+            st.error(f"Could not generate prediction: {error}")
             return
         finally:
             if temp_file is not None:
                 Path(temp_file.name).unlink(missing_ok=True)
 
-        st.subheader("Resultados")
+        st.subheader("Results")
         st.dataframe(predictions, use_container_width=True, hide_index=True)
 
         csv_data = predictions.to_csv(index=False).encode("utf-8")
         st.download_button(
-            "Descargar predicciones",
+            "Download Predictions",
             data=csv_data,
             file_name="predictions.csv",
             mime="text/csv",
@@ -120,7 +120,7 @@ def render_database_mode(model_path, label_classes):
             output_path = default_output_path(Path(local_path.strip()))
             output_path.parent.mkdir(parents=True, exist_ok=True)
             predictions.to_csv(output_path, index=False)
-            st.success(f"Predicciones guardadas en {output_path}")
+            st.success(f"Predictions saved to {output_path}")
 
 
 def main():
@@ -129,27 +129,27 @@ def main():
 
     model_paths = list_models()
     if not model_paths:
-        st.error("No hay modelos guardados en models/. Entrena un modelo primero.")
+        st.error("No models found in models/. Please train a model first.")
         return
 
     latest_model = find_latest_model()
     selected_model = st.sidebar.selectbox(
-        "Modelo",
+        "Model",
         options=model_paths,
         index=model_paths.index(latest_model),
         format_func=lambda path: path.name,
     )
 
     label_classes = load_label_classes(selected_model)
-    st.sidebar.caption(f"Clases: {', '.join(label_classes)}")
+    st.sidebar.caption(f"Classes: {', '.join(label_classes)}")
 
     mode = st.radio(
-        "Entrada",
-        options=["Texto", "Database"],
+        "Input",
+        options=["Text", "Database"],
         horizontal=True,
     )
 
-    if mode == "Texto":
+    if mode == "Text":
         render_text_mode(selected_model, label_classes)
     else:
         render_database_mode(selected_model, label_classes)
