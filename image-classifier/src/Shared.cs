@@ -1,12 +1,12 @@
-using Microsoft.ML;
-using Microsoft.ML.Data;
 using Microsoft.ML.Vision;
 using System.Globalization;
 
 enum Command
 {
-    TrainPretrained,
-    PredictPretrained
+    Train,
+    Evaluate,
+    Predict,
+    Web
 }
 
 static class Defaults
@@ -20,11 +20,11 @@ class ImageData
 {
     public string ImagePath { get; set; } = "";
     public string Label { get; set; } = "";
+    public byte[] Image { get; set; } = [];
 }
 
 sealed class PretrainedInput : ImageData
 {
-    public byte[] Image { get; set; } = [];
     public uint LabelAsKey { get; set; }
 }
 
@@ -36,11 +36,12 @@ sealed class PretrainedOutput : ImageData
 
 sealed class CliOptions
 {
-    public Command Command { get; private init; } = Command.TrainPretrained;
+    public Command Command { get; private init; } = Command.Train;
     public string DataDir { get; private init; } = Defaults.DataDir;
     public string ModelPath { get; private init; } = Defaults.PretrainedModelPath;
     public string WorkspacePath { get; private init; } = Defaults.WorkspacePath;
     public string? ImagePath { get; private init; }
+    public string Url { get; private init; } = "http://localhost:5000";
     public int Epochs { get; private init; } = 80;
     public int BatchSize { get; private init; } = 32;
     public int Seed { get; private init; } = 42;
@@ -92,6 +93,9 @@ sealed class CliOptions
                 case "--image":
                     parsed.ImagePath = value;
                     break;
+                case "--url":
+                    parsed.Url = value;
+                    break;
                 case "--epochs":
                     parsed.Epochs = int.Parse(value, CultureInfo.InvariantCulture);
                     break;
@@ -131,25 +135,31 @@ sealed class CliOptions
 
         Uso:
           dotnet run -- train [opciones]
+          dotnet run -- test [opciones]
           dotnet run -- predict --image ruta/a/imagen.jpg
+          dotnet run -- web
 
         Opciones:
           --data-dir <ruta>          Directorio raiz con train/ y test/. Default: data/raw
           --model-path <ruta>        Ruta del modelo .zip.
+          --url <url>                URL para la app web. Default: http://localhost:5000
           --epochs <n>               Epocas. Default pretrained: 80
           --batch-size <n>           Tamano del batch. Default: 32
           --max-images-per-class <n> Usa solo n imagenes por clase para probar rapido.
           --learning-rate <valor>    Learning rate. Default: 0.01
           --validation-fraction <v>  Fraccion de train usada para validacion. Default: 0.15
           --arch <resnet50|resnet101|mobilenet|inception>
+          --preview-count <n>       Cantidad de predicciones de muestra en test.
           --help                     Muestra esta ayuda.
         """);
     }
 
     private static Command ParseCommand(string value) => value.ToLowerInvariant() switch
     {
-        "train" or "train-pretrained" => Command.TrainPretrained,
-        "predict" or "predict-pretrained" => Command.PredictPretrained,
+        "train" => Command.Train,
+        "test" or "evaluate" or "eval" => Command.Evaluate,
+        "predict" => Command.Predict,
+        "web" or "app" => Command.Web,
         _ => throw new ArgumentException($"Comando no reconocido: {value}")
     };
 
@@ -165,11 +175,12 @@ sealed class CliOptions
 
     private sealed class MutableCliOptions
     {
-        public Command Command { get; set; } = Command.TrainPretrained;
+        public Command Command { get; set; } = Command.Train;
         public string DataDir { get; set; } = Defaults.DataDir;
         public string ModelPath { get; set; } = Defaults.PretrainedModelPath;
         public string WorkspacePath { get; set; } = Defaults.WorkspacePath;
         public string? ImagePath { get; set; }
+        public string Url { get; set; } = "http://localhost:5000";
         public int Epochs { get; set; } = 80;
         public int BatchSize { get; set; } = 32;
         public int Seed { get; set; } = 42;
@@ -188,6 +199,7 @@ sealed class CliOptions
             ModelPath = ModelPath,
             WorkspacePath = WorkspacePath,
             ImagePath = ImagePath,
+            Url = Url,
             Epochs = Epochs,
             BatchSize = BatchSize,
             Seed = Seed,
@@ -203,7 +215,10 @@ sealed class CliOptions
 
 static class Dataset
 {
-    public static ImageData[] LoadImagesFromDirectory(string folder)
+    public static ImageData[] LoadImagesFromDirectory(
+        string folder,
+        int? maxImagesPerClass = null,
+        int seed = 42)
     {
         var supportedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -212,38 +227,47 @@ static class Dataset
             ".png"
         };
 
-        var skippedUnsupportedImages = 0;
+        var files = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories)
+            .Where(file => supportedExtensions.Contains(Path.GetExtension(file)))
+            .Select(file => new
+            {
+                Path = file,
+                Label = Directory.GetParent(file)?.Name ?? ""
+            })
+            .Where(file => !string.IsNullOrWhiteSpace(file.Label));
+
+        if (maxImagesPerClass is not null)
+        {
+            var random = new Random(seed);
+            files = files
+                .GroupBy(file => file.Label)
+                .SelectMany(group => group
+                    .OrderBy(_ => random.Next())
+                    .Take(maxImagesPerClass.Value));
+        }
+
+        var skippedWrongFormatImages = 0;
         var images = new List<ImageData>();
 
-        foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
+        foreach (var file in files)
         {
-            if (!supportedExtensions.Contains(Path.GetExtension(file)))
+            if (!HasJpegOrPngSignature(file.Path))
             {
-                continue;
-            }
-
-            if (!HasJpegOrPngSignature(file))
-            {
-                skippedUnsupportedImages++;
-                continue;
-            }
-
-            var label = Directory.GetParent(file)?.Name ?? "";
-            if (string.IsNullOrWhiteSpace(label))
-            {
+                skippedWrongFormatImages++;
                 continue;
             }
 
             images.Add(new ImageData
             {
-                ImagePath = Path.GetFullPath(file),
-                Label = label,
-                });
+                ImagePath = Path.GetFullPath(file.Path),
+                Label = file.Label,
+                Image = File.ReadAllBytes(file.Path),
+            });
         }
 
-        if (skippedUnsupportedImages > 0)
+        if (skippedWrongFormatImages > 0)
         {
-            Console.WriteLine($"Aviso: se ignoraron {skippedUnsupportedImages} archivos con extension JPG/PNG pero contenido no compatible. Probablemente BMP o imagenes corruptas.");
+            Console.WriteLine($"Aviso: se ignoraron {skippedWrongFormatImages} archivos con extension JPG/PNG pero contenido no compatible. Probablemente BMP o imagenes corruptas.");
         }
 
         return images.ToArray();
@@ -299,26 +323,6 @@ static class Dataset
         {
             Console.WriteLine($"  {TranslateLabel(group.Key)}: {group.Count()}");
         }
-    }
-
-    public static ImageData[] ApplyMaxImagesPerClass(
-        IEnumerable<ImageData> images,
-        int? maxImagesPerClass,
-        int seed)
-    {
-        var allImages = images.ToArray();
-        if (maxImagesPerClass is null)
-        {
-            return allImages;
-        }
-
-        var random = new Random(seed);
-        return allImages
-            .GroupBy(image => image.Label)
-            .SelectMany(group => group
-                .OrderBy(_ => random.Next())
-                .Take(maxImagesPerClass.Value))
-            .ToArray();
     }
 
     public static string TranslateLabel(string? label) => label?.ToLowerInvariant() switch

@@ -1,40 +1,29 @@
-# Clasificador de imagenes: perros vs gatos
+# Image Classifier
 
-Proyecto en C# con ML.NET para entrenar un clasificador de perros vs gatos usando transfer learning con una red ResNet preentrenada.
-
-## Estado Actual
-
-El proyecto usa .NET SDK 8 y ML.NET. La estructura esperada de datos ya existe en esta maquina:
-
-```text
-data/raw/train/cats  -> imagenes de gatos para entrenamiento
-data/raw/train/dogs  -> imagenes de perros para entrenamiento
-data/raw/test/cats   -> imagenes de gatos para evaluacion final
-data/raw/test/dogs   -> imagenes de perros para evaluacion final
-```
-
-`data/raw/train` se divide internamente en entrenamiento y validacion. `data/raw/test` se usa al final para medir la accuracy real.
+Clasificador de perros vs gatos en C# con ML.NET, transfer learning y una app web ASP.NET Core para probar imagenes desde el navegador.
 
 ## Requisitos
 
-- .NET SDK 8 o superior.
-- Imagenes organizadas por carpeta de clase: `cats` y `dogs`.
+- .NET SDK 8.
+- Imagenes JPG o PNG organizadas por clase.
 
-Comprueba .NET:
+## Datos
 
-```powershell
-dotnet --info
+El dataset debe estar organizado asi:
+
+```text
+data/raw/
+  train/
+    cats/
+    dogs/
+  test/
+    cats/
+    dogs/
 ```
 
-Si PowerShell no reconoce `dotnet`, usa temporalmente:
-
-```powershell
-$env:Path += ';C:\Program Files\dotnet'
-```
+`train` se usa para entrenar y validar. `test` se usa para medir el resultado final.
 
 ## Preparar
-
-Desde la carpeta del repositorio:
 
 ```powershell
 dotnet restore
@@ -43,16 +32,14 @@ dotnet build
 
 ## Entrenar
 
-Entrenamiento recomendado:
-
 ```powershell
 dotnet run -- train
 ```
 
-Equivalente:
+Prueba rapida con pocas imagenes:
 
 ```powershell
-dotnet run -- train-pretrained
+dotnet run -- train --epochs 2 --max-images-per-class 100
 ```
 
 El modelo se guarda en:
@@ -61,116 +48,63 @@ El modelo se guarda en:
 models/dog-cat-pretrained.zip
 ```
 
-Al terminar, el programa evalua automaticamente contra `data/raw/test`.
+Al terminar el entrenamiento, si existe `data/raw/test`, el programa evalua automaticamente el modelo.
 
-## Prueba Rapida
+## Evaluar
 
-Antes de entrenar con todo el dataset, puedes probar el pipeline con pocas imagenes:
-
-```powershell
-dotnet run -- train --epochs 2 --max-images-per-class 100
-```
-
-Si eso termina bien, lanza el entrenamiento completo:
+Para evaluar un modelo ya entrenado sin volver a entrenar:
 
 ```powershell
-dotnet run -- train --epochs 80 --batch-size 32
+dotnet run -- test
 ```
 
-## Progreso
+El test muestra una muestra de predicciones, accuracy, correctas/total y matriz de predicciones.
 
-La primera ejecucion puede tardar antes de imprimir epochs porque ML.NET prepara/cachea caracteristicas del modelo preentrenado.
+## Predecir Una Imagen
 
-Mientras trabaja, veras mensajes como:
-
-```text
-Sigue entrenando... 18:30:00
+```powershell
+dotnet run -- predict --image ruta/a/imagen.jpg
 ```
 
-Cuando ML.NET empiece a reportar metricas, veras:
+El comando imprime la prediccion, la confianza y las probabilidades para `gato` y `perro`.
+
+## App Web
+
+Levanta una interfaz web en C# para subir una foto y ver la prediccion con probabilidades:
+
+```powershell
+dotnet run -- web
+```
+
+La app abre el navegador automaticamente. Si necesitas abrirla manualmente, usa la URL que aparece en consola:
 
 ```text
-Epoch 1/80
-Epoch 2/80
+http://localhost:5000
+```
+
+Si el puerto `5000` esta ocupado, la app usa el siguiente puerto libre y lo muestra en consola. Tambien puedes indicar otra URL:
+
+```powershell
+dotnet run -- web --url http://localhost:5050
 ```
 
 ## Opciones Utiles
 
-Entrenar mas epocas:
-
 ```powershell
-dotnet run -- train --epochs 100
+dotnet run -- train --epochs 80 --batch-size 32
+dotnet run -- train --arch resnet101 --learning-rate 0.005
+dotnet run -- test --preview-count 20
+dotnet run -- web --model-path models/dog-cat-pretrained.zip
 ```
 
-Usar una arquitectura mas pesada:
+Arquitecturas disponibles: `resnet50`, `resnet101`, `mobilenet`, `inception`.
 
-```powershell
-dotnet run -- train --arch resnet101
-```
-
-Probar un learning rate mas bajo:
-
-```powershell
-dotnet run -- train --learning-rate 0.005
-```
-
-Ejemplo combinado:
-
-```powershell
-dotnet run -- train --epochs 100 --batch-size 32 --arch resnet101 --learning-rate 0.005
-```
-
-Arquitecturas disponibles:
-
-- `resnet50`: default, buen equilibrio.
-- `resnet101`: mas lento, puede mejorar accuracy.
-- `mobilenet`: mas ligero.
-- `inception`: alternativa para experimentar.
-
-## Predecir
-
-Con una imagen nueva:
-
-```powershell
-dotnet run -- predict --image ruta/a/la/imagen.jpg
-```
-
-Equivalente:
-
-```powershell
-dotnet run -- predict-pretrained --image ruta/a/la/imagen.jpg
-```
-
-Con una ruta de modelo especifica:
-
-```powershell
-dotnet run -- predict --image ruta/a/la/imagen.jpg --model-path models/dog-cat-pretrained.zip
-```
-
-## Imagenes Invalidas
-
-Si aparece un aviso como:
+## Archivos
 
 ```text
-Aviso: se ignoraron X archivos con extension JPG/PNG pero contenido no compatible.
-```
-
-significa que algunos archivos tienen extension `.jpg`, `.jpeg` o `.png`, pero su contenido real es BMP o esta corrupto. El programa los ignora para evitar errores de decodificacion.
-
-## Archivos Principales
-
-- `ImageClassifier.csproj`: dependencias .NET y ML.NET.
-- `src/Program.cs`: entrada del programa.
-- `src/TrainPretrained.cs`: entrenamiento e inferencia con transfer learning.
-- `src/Shared.cs`: opciones, carga de datos y utilidades.
-
-## Salidas Generadas
-
-Estas carpetas se crean durante el uso y estan ignoradas por Git:
-
-```text
-models/   -> modelos entrenados
-outputs/  -> cache de ML.NET
-bin/      -> compilacion .NET
-obj/      -> archivos intermedios .NET
+ImageClassifier.csproj    dependencias .NET, ML.NET y ASP.NET Core
+src/Program.cs            entrada del programa
+src/Shared.cs             opciones CLI y carga de datos
+src/TrainPretrained.cs    entrenamiento, evaluacion e inferencia
+src/WebApp.cs             app web para subir imagenes
 ```
