@@ -122,6 +122,11 @@ std::string PretrainedModelRunner::server_command_line(const std::uint16_t port)
         "off",
     };
 
+    if (!options_.mmproj_path.empty()) {
+        arguments.push_back("--mmproj");
+        arguments.push_back(to_string(options_.mmproj_path));
+    }
+
     std::ostringstream command;
     for (std::size_t index = 0; index < arguments.size(); ++index) {
         if (index != 0) {

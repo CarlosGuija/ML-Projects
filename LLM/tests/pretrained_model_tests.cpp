@@ -10,6 +10,7 @@ void builds_llama_cpp_command_line() {
     const llm::models::PretrainedModelRunner runner({
         .executable = "tools/llama-cli.exe",
         .model_path = "models/tiny model.gguf",
+        .mmproj_path = "",
         .system_prompt = "Answer in English.",
         .prompt = "hello model",
         .max_tokens = 32,
@@ -31,6 +32,7 @@ void rejects_missing_model_path() {
     try {
         (void)llm::models::PretrainedModelRunner({
             .model_path = "",
+            .mmproj_path = "",
             .system_prompt = "Answer in English.",
             .prompt = "hello",
         });
@@ -51,6 +53,7 @@ void builds_persistent_chat_command_line() {
     const llm::models::PretrainedModelRunner runner({
         .executable = "tools/llama.cpp/llama-cli.exe",
         .model_path = "models/model.gguf",
+        .mmproj_path = "",
         .system_prompt = "Answer in English.",
         .prompt = "Hello",
         .max_tokens = 128,
@@ -67,6 +70,7 @@ void builds_llama_server_command_line() {
     const llm::models::PretrainedModelRunner runner({
         .executable = "tools/llama.cpp/llama-cli.exe",
         .model_path = "models/model.gguf",
+        .mmproj_path = "models/mmproj.gguf",
         .system_prompt = "Answer in English.",
         .prompt = "server",
     });
@@ -78,6 +82,8 @@ void builds_llama_server_command_line() {
     assert(command.find("--host 127.0.0.1") != std::string::npos);
     assert(command.find("--port 9090") != std::string::npos);
     assert(command.find("--reasoning off") != std::string::npos);
+    assert(command.find("--mmproj models/mmproj.gguf") != std::string::npos ||
+           command.find("--mmproj \"models/mmproj.gguf\"") != std::string::npos);
     assert(command.find("--system-prompt") == std::string::npos);
 }
 

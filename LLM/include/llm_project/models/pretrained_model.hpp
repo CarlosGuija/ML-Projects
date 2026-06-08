@@ -11,6 +11,7 @@ namespace llm::models {
 struct PretrainedGenerationOptions {
     std::filesystem::path executable{"llama-cli"};
     std::filesystem::path model_path;
+    std::filesystem::path mmproj_path;
     std::string system_prompt;
     std::string prompt;
     std::size_t max_tokens{128};

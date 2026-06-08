@@ -19,14 +19,16 @@ void print_usage() {
         << "  llm \"prompt\"\n"
         << "  llm chat --model path/to/model.gguf "
         << "[--prompt \"hello\"] [--max-tokens 256] [--temperature 0.8] [--exe path/to/llama-cli]\n"
-        << "  llm serve-llama --model path/to/model.gguf [--port 8080] [--open] [--exe path/to/llama-cli]\n"
+        << "  llm serve-llama --model path/to/model.gguf [--mmproj path/to/mmproj.gguf] "
+        << "[--port 8080] [--open] [--exe path/to/llama-cli]\n"
         << "  llm web [--port 8080]\n"
         << "  llm generate-pretrained --model path/to/model.gguf --prompt \"prompt\" "
         << "[--max-tokens 128] [--temperature 0.8] [--exe path/to/llama-cli]\n"
         << "\n"
         << "Environment:\n"
         << "  LLAMA_CPP_CLI    path to llama-cli.exe\n"
-        << "  LOCAL_LLM_MODEL  path to a local GGUF model\n";
+        << "  LOCAL_LLM_MODEL  path to a local GGUF model\n"
+        << "  LOCAL_LLM_MMPROJ path to a local multimodal projector GGUF\n";
 }
 
 std::optional<std::string> argument_value(const int argc, char* argv[], const std::string& name) {
@@ -56,6 +58,18 @@ std::optional<std::string> default_model_path() {
 
     if (std::filesystem::exists(lm_studio_model)) {
         return lm_studio_model.string();
+    }
+
+    return std::nullopt;
+}
+
+std::optional<std::string> default_mmproj_path() {
+    const std::filesystem::path lm_studio_mmproj{
+        "C:\\Users\\cagui\\.lmstudio\\models\\lmstudio-community\\gemma-4-E2B-it-GGUF\\mmproj-gemma-4-E2B-it-BF16.gguf"
+    };
+
+    if (std::filesystem::exists(lm_studio_mmproj)) {
+        return lm_studio_mmproj.string();
     }
 
     return std::nullopt;
@@ -100,6 +114,13 @@ int run_pretrained(const int argc, char* argv[]) {
     llm::models::PretrainedGenerationOptions options;
     options.executable = default_executable_path();
     options.model_path = *model_path;
+    if (const auto mmproj_path = argument_value(argc, argv, "--mmproj"); mmproj_path.has_value()) {
+        options.mmproj_path = *mmproj_path;
+    } else if (const auto* env_mmproj = std::getenv("LOCAL_LLM_MMPROJ"); env_mmproj != nullptr) {
+        options.mmproj_path = env_mmproj;
+    } else if (const auto default_mmproj = default_mmproj_path(); default_mmproj.has_value()) {
+        options.mmproj_path = *default_mmproj;
+    }
     options.prompt = *prompt;
     options.system_prompt =
         argument_value(argc, argv, "--system").value_or(
@@ -149,6 +170,13 @@ llm::models::PretrainedGenerationOptions pretrained_options_from_args(
     llm::models::PretrainedGenerationOptions options;
     options.executable = default_executable_path();
     options.model_path = *model_path;
+    if (const auto mmproj_path = argument_value(argc, argv, "--mmproj"); mmproj_path.has_value()) {
+        options.mmproj_path = *mmproj_path;
+    } else if (const auto* env_mmproj = std::getenv("LOCAL_LLM_MMPROJ"); env_mmproj != nullptr) {
+        options.mmproj_path = env_mmproj;
+    } else if (const auto default_mmproj = default_mmproj_path(); default_mmproj.has_value()) {
+        options.mmproj_path = *default_mmproj;
+    }
     options.prompt = prompt;
     options.max_tokens = default_max_tokens;
     options.system_prompt =

@@ -106,6 +106,36 @@ You can also use:
 .\build\llm.exe serve-llama --port 8080 --open
 ```
 
+## Image Input
+
+The local web UI can support image upload when the model has a multimodal
+projector. This project autodetects the Gemma projector installed by LM Studio:
+
+```powershell
+C:\Users\cagui\.lmstudio\models\lmstudio-community\gemma-4-E2B-it-GGUF\mmproj-gemma-4-E2B-it-BF16.gguf
+```
+
+So the usual command is enough:
+
+```powershell
+.\build\llm.exe web
+```
+
+If you want to pass a projector explicitly:
+
+```powershell
+.\build\llm.exe web --mmproj C:\path\to\mmproj.gguf
+```
+
+or:
+
+```powershell
+.\build\llm.exe serve-llama --port 8080 --open --mmproj C:\path\to\mmproj.gguf
+```
+
+This does not copy model files into the repository. The web UI reads the model
+and projector from their local paths.
+
 ## Probar llama.cpp
 
 Primero comprueba que `llama-cli` funciona por separado:
