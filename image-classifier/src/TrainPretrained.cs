@@ -89,9 +89,10 @@ static class TrainPretrained
             throw new ArgumentException("Debes indicar --image para predecir.");
         }
 
-        if (!File.Exists(options.ModelPath))
+        var modelPath = ModelCatalog.ResolveModelPathForRead(options);
+        if (!File.Exists(modelPath))
         {
-            throw new FileNotFoundException("No se encontro el modelo entrenado.", options.ModelPath);
+            throw new FileNotFoundException("No se encontro el modelo entrenado.", modelPath);
         }
 
         if (!File.Exists(options.ImagePath))
@@ -99,7 +100,8 @@ static class TrainPretrained
             throw new FileNotFoundException("No se encontro la imagen.", options.ImagePath);
         }
 
-        var model = mlContext.Model.Load(options.ModelPath, out _);
+        Console.WriteLine($"Modelo: {modelPath}");
+        var model = mlContext.Model.Load(modelPath, out _);
         var response = PredictImage(mlContext, model, options.ImagePath);
 
         Console.WriteLine($"Prediccion: {response.PredictedLabel}");
@@ -141,9 +143,10 @@ static class TrainPretrained
         var testDir = Path.GetFullPath(Path.Combine(options.DataDir, "test"));
         Dataset.EnsureDirectoryExists(testDir, "directorio de test");
 
-        if (!File.Exists(options.ModelPath))
+        var modelPath = ModelCatalog.ResolveModelPathForRead(options);
+        if (!File.Exists(modelPath))
         {
-            throw new FileNotFoundException("No se encontro el modelo entrenado.", options.ModelPath);
+            throw new FileNotFoundException("No se encontro el modelo entrenado.", modelPath);
         }
 
         Console.WriteLine("Cargando imagenes de test...");
@@ -154,12 +157,12 @@ static class TrainPretrained
             return;
         }
 
-        Console.WriteLine($"Modelo: {options.ModelPath}");
+        Console.WriteLine($"Modelo: {modelPath}");
         Console.WriteLine($"Imagenes de test encontradas: {testImages.Length}");
         Dataset.PrintClassBalance(testImages);
 
         Console.WriteLine("Cargando modelo TensorFlow/ML.NET...");
-        var model = mlContext.Model.Load(options.ModelPath, out _);
+        var model = mlContext.Model.Load(modelPath, out _);
         Console.WriteLine("Preparando pipeline de inferencia...");
         var testData = mlContext.Data.LoadFromEnumerable(testImages);
         var predictions = model.Transform(testData);

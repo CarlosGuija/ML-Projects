@@ -23,4 +23,7 @@ switch (options.Command)
     case Command.Web:
         WebApp.Run(mlContext, options);
         break;
+    case Command.ListModels:
+        ModelCatalog.PrintAvailableModels();
+        break;
 }

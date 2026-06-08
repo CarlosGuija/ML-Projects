@@ -16,7 +16,7 @@ static class WebApp
         app.MapGet("/", () => Results.Content(RenderPage(), "text/html"));
         app.MapPost("/predict", async (HttpRequest request) =>
         {
-            var modelPath = Path.GetFullPath(options.ModelPath);
+            var modelPath = Path.GetFullPath(ModelCatalog.ResolveModelPathForRead(options));
             if (!File.Exists(modelPath))
             {
                 return Results.Content(

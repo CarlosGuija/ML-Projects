@@ -48,7 +48,24 @@ El modelo se guarda en:
 models/dog-cat-pretrained.zip
 ```
 
+Si entrenas varias veces sin cambiar `--model-path`, ese archivo se reemplaza. Para conservar varios modelos, indica una ruta distinta:
+
+```powershell
+dotnet run -- train --model-path models/dog-cat-resnet50-80epochs.zip
+dotnet run -- train --arch mobilenet --model-path models/dog-cat-mobilenet.zip
+```
+
 Al terminar el entrenamiento, si existe `data/raw/test`, el programa evalua automaticamente el modelo.
+
+## Modelos Guardados
+
+Para ver los modelos disponibles:
+
+```powershell
+dotnet run -- models
+```
+
+La lista aparece con el modelo mas reciente primero.
 
 ## Evaluar
 
@@ -58,12 +75,24 @@ Para evaluar un modelo ya entrenado sin volver a entrenar:
 dotnet run -- test
 ```
 
+Si no pasas `--model-path`, `test` usa automaticamente el `.zip` mas reciente en `models/`. Para evaluar un modelo concreto:
+
+```powershell
+dotnet run -- test --model-path models/dog-cat-mobilenet.zip
+```
+
 El test muestra una muestra de predicciones, accuracy, correctas/total y matriz de predicciones.
 
 ## Predecir Una Imagen
 
 ```powershell
 dotnet run -- predict --image ruta/a/imagen.jpg
+```
+
+Si no pasas `--model-path`, `predict` usa el modelo mas reciente en `models/`. Para elegir uno concreto:
+
+```powershell
+dotnet run -- predict --image ruta/a/imagen.jpg --model-path models/dog-cat-resnet50-80epochs.zip
 ```
 
 El comando imprime la prediccion, la confianza y las probabilidades para `gato` y `perro`.
@@ -88,11 +117,14 @@ Si el puerto `5000` esta ocupado, la app usa el siguiente puerto libre y lo mues
 dotnet run -- web --url http://localhost:5050
 ```
 
+Igual que `test` y `predict`, la app web usa el modelo mas reciente si no pasas `--model-path`.
+
 ## Opciones Utiles
 
 ```powershell
 dotnet run -- train --epochs 80 --batch-size 32
 dotnet run -- train --arch resnet101 --learning-rate 0.005
+dotnet run -- models
 dotnet run -- test --preview-count 20
 dotnet run -- web --model-path models/dog-cat-pretrained.zip
 ```

@@ -6,12 +6,14 @@ enum Command
     Train,
     Evaluate,
     Predict,
-    Web
+    Web,
+    ListModels
 }
 
 static class Defaults
 {
     public const string DataDir = "data/raw";
+    public const string ModelsDir = "models";
     public const string PretrainedModelPath = "models/dog-cat-pretrained.zip";
     public const string WorkspacePath = "outputs/mlnet-cache";
 }
@@ -39,6 +41,7 @@ sealed class CliOptions
     public Command Command { get; private init; } = Command.Train;
     public string DataDir { get; private init; } = Defaults.DataDir;
     public string ModelPath { get; private init; } = Defaults.PretrainedModelPath;
+    public bool ModelPathProvided { get; private init; }
     public string WorkspacePath { get; private init; } = Defaults.WorkspacePath;
     public string? ImagePath { get; private init; }
     public string Url { get; private init; } = "http://localhost:5000";
@@ -86,6 +89,7 @@ sealed class CliOptions
                     break;
                 case "--model-path":
                     parsed.ModelPath = value;
+                    parsed.ModelPathProvided = true;
                     break;
                 case "--workspace-path":
                     parsed.WorkspacePath = value;
@@ -138,10 +142,11 @@ sealed class CliOptions
           dotnet run -- test [opciones]
           dotnet run -- predict --image ruta/a/imagen.jpg
           dotnet run -- web
+          dotnet run -- models
 
         Opciones:
           --data-dir <ruta>          Directorio raiz con train/ y test/. Default: data/raw
-          --model-path <ruta>        Ruta del modelo .zip.
+          --model-path <ruta>        Ruta del modelo .zip. En test/predict/web, si se omite, usa el .zip mas reciente en models/.
           --url <url>                URL para la app web. Default: http://localhost:5000
           --epochs <n>               Epocas. Default pretrained: 80
           --batch-size <n>           Tamano del batch. Default: 32
@@ -160,6 +165,7 @@ sealed class CliOptions
         "test" or "evaluate" or "eval" => Command.Evaluate,
         "predict" => Command.Predict,
         "web" or "app" => Command.Web,
+        "models" or "list-models" => Command.ListModels,
         _ => throw new ArgumentException($"Comando no reconocido: {value}")
     };
 
@@ -178,6 +184,7 @@ sealed class CliOptions
         public Command Command { get; set; } = Command.Train;
         public string DataDir { get; set; } = Defaults.DataDir;
         public string ModelPath { get; set; } = Defaults.PretrainedModelPath;
+        public bool ModelPathProvided { get; set; }
         public string WorkspacePath { get; set; } = Defaults.WorkspacePath;
         public string? ImagePath { get; set; }
         public string Url { get; set; } = "http://localhost:5000";
@@ -197,6 +204,7 @@ sealed class CliOptions
             Command = Command,
             DataDir = DataDir,
             ModelPath = ModelPath,
+            ModelPathProvided = ModelPathProvided,
             WorkspacePath = WorkspacePath,
             ImagePath = ImagePath,
             Url = Url,
@@ -332,4 +340,52 @@ static class Dataset
         null or "" => "desconocido",
         _ => label
     };
+}
+
+static class ModelCatalog
+{
+    public static string ResolveModelPathForRead(CliOptions options)
+    {
+        if (options.ModelPathProvided)
+        {
+            return options.ModelPath;
+        }
+
+        var latestModel = GetModels()
+            .OrderByDescending(model => model.LastWriteTimeUtc)
+            .FirstOrDefault();
+
+        return latestModel?.FullName ?? options.ModelPath;
+    }
+
+    public static void PrintAvailableModels()
+    {
+        var models = GetModels()
+            .OrderByDescending(model => model.LastWriteTimeUtc)
+            .ToArray();
+
+        if (models.Length == 0)
+        {
+            Console.WriteLine($"No se encontraron modelos .zip en {Path.GetFullPath(Defaults.ModelsDir)}.");
+            return;
+        }
+
+        Console.WriteLine("Modelos disponibles, mas reciente primero:");
+        foreach (var model in models)
+        {
+            Console.WriteLine($"  {model.FullName}  modificado={model.LastWriteTime:yyyy-MM-dd HH:mm:ss}");
+        }
+    }
+
+    private static IEnumerable<FileInfo> GetModels()
+    {
+        var modelsDir = Path.GetFullPath(Defaults.ModelsDir);
+        if (!Directory.Exists(modelsDir))
+        {
+            return [];
+        }
+
+        return Directory.EnumerateFiles(modelsDir, "*.zip", SearchOption.TopDirectoryOnly)
+            .Select(file => new FileInfo(file));
+    }
 }
