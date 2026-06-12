@@ -7,7 +7,8 @@ This project is a local C++ chat application built around `llama.cpp`.
 - `llm chat`: interactive local chat backed by `llama-cli --conversation`.
 - `llm serve-llama`: persistent local `llama-server` for RAG and web UI work.
 - `llm generate-pretrained`: one-shot generation with a GGUF model.
-- `llm "<prompt>"`: educational bigram demo kept for learning and tests.
+- `llm "<prompt>"`: shorthand one-shot generation with the configured GGUF
+  model.
 
 Model files stay outside Git. The repository owns code, tests, docs, and small
 examples only.

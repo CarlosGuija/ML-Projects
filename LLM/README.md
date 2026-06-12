@@ -28,8 +28,8 @@ En generadores de un solo tipo de build, el ejecutable puede quedar en:
 .\build\llm.exe "hello local model"
 ```
 
-El ejecutable entrena un modelo bigram pequeno en memoria y genera texto a
-partir del prompt.
+El ejecutable usa el modelo GGUF configurado y genera texto a partir del
+prompt.
 
 ## Local Chat With llama.cpp
 

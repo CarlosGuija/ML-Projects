@@ -33,7 +33,6 @@ void handles_empty_input() {
 int main() {
     extern void run_chat_session_tests();
     extern void run_character_vocabulary_tests();
-    extern void run_bigram_model_tests();
     extern void run_pretrained_model_tests();
     extern void run_rag_retrieval_tests();
 
@@ -42,7 +41,6 @@ int main() {
     handles_empty_input();
     run_chat_session_tests();
     run_character_vocabulary_tests();
-    run_bigram_model_tests();
     run_pretrained_model_tests();
     run_rag_retrieval_tests();
 

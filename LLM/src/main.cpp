@@ -1,6 +1,4 @@
 #include "llm_project/chat/chat_session.hpp"
-#include "llm_project/data/character_vocabulary.hpp"
-#include "llm_project/models/bigram_model.hpp"
 #include "llm_project/models/pretrained_model.hpp"
 
 #include <cstdint>
@@ -238,22 +236,15 @@ int run_web(const int argc, char* argv[]) {
     return run_serve_llama(argc, argv);
 }
 
-int run_bigram_demo(const std::string& prompt) {
-    const std::string training_text =
-        "hello local llm\n"
-        "local models can run in c++\n"
-        "small language models are a good first step\n";
+int run_prompt(const int argc, char* argv[]) {
+    if (argc < 1) {
+        print_usage();
+        return 2;
+    }
 
-    llm::data::CharacterVocabulary vocabulary;
-    vocabulary.fit(training_text + prompt);
-
-    llm::models::BigramModel model(vocabulary);
-    model.train(training_text);
-
-    const auto generated = model.generate(prompt, 80);
-
-    std::cout << generated << '\n';
-    return 0;
+    auto options = pretrained_options_from_args(argc - 1, argv + 1, argv[0], 128);
+    const llm::models::PretrainedModelRunner runner(options);
+    return runner.generate();
 }
 
 }  // namespace
@@ -276,8 +267,7 @@ int main(int argc, char* argv[]) {
             return run_pretrained(argc - 2, argv + 2);
         }
 
-        const std::string prompt = argc > 1 ? argv[1] : "hello local llm";
-        return run_bigram_demo(prompt);
+        return run_prompt(argc - 1, argv + 1);
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << '\n';
         return 1;

@@ -14,7 +14,6 @@ add_library(llm_core
     src/llm_project/chat/chat_session.cpp
     src/llm_project/data/character_vocabulary.cpp
     src/llm_project/inference/tokenizer.cpp
-    src/llm_project/models/bigram_model.cpp
     src/llm_project/models/pretrained_model.cpp
     src/llm_project/rag/retrieval.cpp
 )
@@ -35,7 +34,6 @@ target_link_libraries(llm PRIVATE llm_core)
 enable_testing()
 
 add_executable(llm_tests
-    tests/bigram_model_tests.cpp
     tests/chat_session_tests.cpp
     tests/character_vocabulary_tests.cpp
     tests/pretrained_model_tests.cpp
