@@ -9,7 +9,7 @@ void builds_chat_prompt_with_history() {
     llm::chat::ChatSession session("Be brief.");
     session.add_user_message("Hello");
     session.add_assistant_message("Hello, how can I help?");
-    session.add_user_message("What is RAG?");
+    session.add_user_message("What can this local model do?");
 
     const auto prompt = session.build_prompt();
 

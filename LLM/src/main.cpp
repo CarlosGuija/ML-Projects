@@ -14,14 +14,10 @@ namespace {
 void print_usage() {
     std::cout
         << "Usage:\n"
-        << "  llm \"prompt\"\n"
         << "  llm chat --model path/to/model.gguf "
         << "[--prompt \"hello\"] [--max-tokens 256] [--temperature 0.8] [--exe path/to/llama-cli]\n"
-        << "  llm serve-llama --model path/to/model.gguf [--mmproj path/to/mmproj.gguf] "
-        << "[--port 8080] [--open] [--exe path/to/llama-cli]\n"
-        << "  llm web [--port 8080]\n"
-        << "  llm generate-pretrained --model path/to/model.gguf --prompt \"prompt\" "
-        << "[--max-tokens 128] [--temperature 0.8] [--exe path/to/llama-cli]\n"
+        << "  llm web --model path/to/model.gguf [--mmproj path/to/mmproj.gguf] "
+        << "[--port 8080] [--exe path/to/llama-cli]\n"
         << "\n"
         << "Environment:\n"
         << "  LLAMA_CPP_CLI    path to llama-cli.exe\n"
@@ -37,16 +33,6 @@ std::optional<std::string> argument_value(const int argc, char* argv[], const st
     }
 
     return std::nullopt;
-}
-
-bool has_argument(const int argc, char* argv[], const std::string& name) {
-    for (int index = 0; index < argc; ++index) {
-        if (argv[index] == name) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 std::optional<std::string> default_model_path() {
@@ -90,59 +76,6 @@ void open_browser_after_server_start(const std::string& port) {
 #else
     (void)port;
 #endif
-}
-
-int run_pretrained(const int argc, char* argv[]) {
-    auto model_path = argument_value(argc, argv, "--model");
-    const auto prompt = argument_value(argc, argv, "--prompt");
-    if (!model_path.has_value()) {
-        if (const auto* env_model = std::getenv("LOCAL_LLM_MODEL"); env_model != nullptr) {
-            model_path = env_model;
-        }
-    }
-    if (!model_path.has_value()) {
-        model_path = default_model_path();
-    }
-
-    if (!model_path.has_value() || !prompt.has_value()) {
-        print_usage();
-        return 2;
-    }
-
-    llm::models::PretrainedGenerationOptions options;
-    options.executable = default_executable_path();
-    options.model_path = *model_path;
-    if (const auto mmproj_path = argument_value(argc, argv, "--mmproj"); mmproj_path.has_value()) {
-        options.mmproj_path = *mmproj_path;
-    } else if (const auto* env_mmproj = std::getenv("LOCAL_LLM_MMPROJ"); env_mmproj != nullptr) {
-        options.mmproj_path = env_mmproj;
-    } else if (const auto default_mmproj = default_mmproj_path(); default_mmproj.has_value()) {
-        options.mmproj_path = *default_mmproj;
-    }
-    options.prompt = *prompt;
-    options.system_prompt =
-        argument_value(argc, argv, "--system").value_or(
-            "You are a helpful local assistant. Answer in clear, concise English. "
-            "Do not output thinking, analysis, chain-of-thought, or hidden reasoning. "
-            "Return only the final answer."
-        );
-
-    if (const auto executable = argument_value(argc, argv, "--exe"); executable.has_value()) {
-        options.executable = *executable;
-    } else if (const auto* env_executable = std::getenv("LLAMA_CPP_CLI"); env_executable != nullptr) {
-        options.executable = env_executable;
-    }
-
-    if (const auto max_tokens = argument_value(argc, argv, "--max-tokens"); max_tokens.has_value()) {
-        options.max_tokens = static_cast<std::size_t>(std::stoul(*max_tokens));
-    }
-
-    if (const auto temperature = argument_value(argc, argv, "--temperature"); temperature.has_value()) {
-        options.temperature = std::stof(*temperature);
-    }
-
-    const llm::models::PretrainedModelRunner runner(options);
-    return runner.generate();
 }
 
 llm::models::PretrainedGenerationOptions pretrained_options_from_args(
@@ -218,13 +151,9 @@ int run_chat(const int argc, char* argv[]) {
     return runner.chat();
 }
 
-int run_serve_llama(const int argc, char* argv[]) {
+int run_web_server(const int argc, char* argv[]) {
     auto options = pretrained_options_from_args(argc, argv, "server", 128);
     const auto port = argument_value(argc, argv, "--port").value_or("8080");
-
-    if (has_argument(argc, argv, "--open")) {
-        open_browser_after_server_start(port);
-    }
 
     const llm::models::PretrainedModelRunner runner(options);
     return runner.serve(static_cast<std::uint16_t>(std::stoul(port)));
@@ -233,18 +162,7 @@ int run_serve_llama(const int argc, char* argv[]) {
 int run_web(const int argc, char* argv[]) {
     const auto port = argument_value(argc, argv, "--port").value_or("8080");
     open_browser_after_server_start(port);
-    return run_serve_llama(argc, argv);
-}
-
-int run_prompt(const int argc, char* argv[]) {
-    if (argc < 1) {
-        print_usage();
-        return 2;
-    }
-
-    auto options = pretrained_options_from_args(argc - 1, argv + 1, argv[0], 128);
-    const llm::models::PretrainedModelRunner runner(options);
-    return runner.generate();
+    return run_web_server(argc, argv);
 }
 
 }  // namespace
@@ -255,19 +173,12 @@ int main(int argc, char* argv[]) {
             return run_chat(argc - 2, argv + 2);
         }
 
-        if (argc > 1 && std::string(argv[1]) == "serve-llama") {
-            return run_serve_llama(argc - 2, argv + 2);
-        }
-
         if (argc > 1 && std::string(argv[1]) == "web") {
             return run_web(argc - 2, argv + 2);
         }
 
-        if (argc > 1 && std::string(argv[1]) == "generate-pretrained") {
-            return run_pretrained(argc - 2, argv + 2);
-        }
-
-        return run_prompt(argc - 1, argv + 1);
+        print_usage();
+        return 2;
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << '\n';
         return 1;

@@ -1,7 +1,5 @@
 #include "llm_project/models/pretrained_model.hpp"
 
-#include <array>
-#include <cstdio>
 #include <cstdlib>
 #include <sstream>
 #include <stdexcept>
@@ -32,6 +30,35 @@ std::filesystem::path sibling_executable(const std::filesystem::path& executable
     return filename;
 }
 
+std::vector<std::string> chat_arguments(const PretrainedGenerationOptions& options) {
+    std::vector<std::string> arguments{
+        to_string(options.executable),
+        "--model",
+        to_string(options.model_path),
+    };
+
+    if (!options.system_prompt.empty()) {
+        arguments.push_back("--system-prompt");
+        arguments.push_back(options.system_prompt);
+    }
+
+    arguments.insert(arguments.end(), {
+        "--prompt",
+        options.prompt,
+        "--n-predict",
+        to_string(options.max_tokens),
+        "--temp",
+        to_string(options.temperature),
+        "--no-display-prompt",
+        "--simple-io",
+        "--reasoning",
+        "off",
+        "--conversation",
+    });
+
+    return arguments;
+}
+
 }  // namespace
 
 PretrainedModelRunner::PretrainedModelRunner(PretrainedGenerationOptions options)
@@ -49,52 +76,8 @@ PretrainedModelRunner::PretrainedModelRunner(PretrainedGenerationOptions options
     }
 }
 
-std::vector<std::string> PretrainedModelRunner::command_arguments() const {
-    std::vector<std::string> arguments{
-        to_string(options_.executable),
-        "--model",
-        to_string(options_.model_path),
-    };
-
-    if (!options_.system_prompt.empty()) {
-        arguments.push_back("--system-prompt");
-        arguments.push_back(options_.system_prompt);
-    }
-
-    arguments.insert(arguments.end(), {
-        "--prompt",
-        options_.prompt,
-        "--n-predict",
-        to_string(options_.max_tokens),
-        "--temp",
-        to_string(options_.temperature),
-        "--no-display-prompt",
-        "--simple-io",
-        "--reasoning",
-        "off",
-    });
-
-    return arguments;
-}
-
-std::string PretrainedModelRunner::command_line() const {
-    const auto arguments = command_arguments();
-    std::ostringstream command;
-
-    for (std::size_t index = 0; index < arguments.size(); ++index) {
-        if (index != 0) {
-            command << ' ';
-        }
-
-        command << quote_command_argument(arguments[index]);
-    }
-
-    return command.str();
-}
-
 std::string PretrainedModelRunner::chat_command_line() const {
-    auto arguments = command_arguments();
-    arguments.push_back("--conversation");
+    const auto arguments = chat_arguments(options_);
 
     std::ostringstream command;
     for (std::size_t index = 0; index < arguments.size(); ++index) {
@@ -139,14 +122,6 @@ std::string PretrainedModelRunner::server_command_line(const std::uint16_t port)
     return command.str();
 }
 
-int PretrainedModelRunner::generate() const {
-    if (!std::filesystem::exists(options_.model_path)) {
-        throw std::runtime_error("Pretrained model file does not exist: " + to_string(options_.model_path));
-    }
-
-    return std::system(command_line().c_str());
-}
-
 int PretrainedModelRunner::chat() const {
     if (!std::filesystem::exists(options_.model_path)) {
         throw std::runtime_error("Pretrained model file does not exist: " + to_string(options_.model_path));
@@ -161,41 +136,6 @@ int PretrainedModelRunner::serve(const std::uint16_t port) const {
     }
 
     return std::system(server_command_line(port).c_str());
-}
-
-std::string PretrainedModelRunner::generate_text() const {
-    if (!std::filesystem::exists(options_.model_path)) {
-        throw std::runtime_error("Pretrained model file does not exist: " + to_string(options_.model_path));
-    }
-
-#ifdef _WIN32
-    FILE* pipe = _popen(command_line().c_str(), "r");
-#else
-    FILE* pipe = popen(command_line().c_str(), "r");
-#endif
-
-    if (pipe == nullptr) {
-        throw std::runtime_error("Failed to run pretrained model command.");
-    }
-
-    std::string output;
-    std::array<char, 4096> buffer{};
-
-    while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) {
-        output += buffer.data();
-    }
-
-#ifdef _WIN32
-    const int result = _pclose(pipe);
-#else
-    const int result = pclose(pipe);
-#endif
-
-    if (result != 0) {
-        throw std::runtime_error("Pretrained model command failed.");
-    }
-
-    return output;
 }
 
 std::string quote_command_argument(const std::string& argument) {

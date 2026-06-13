@@ -22,15 +22,11 @@ class PretrainedModelRunner {
 public:
     explicit PretrainedModelRunner(PretrainedGenerationOptions options);
 
-    [[nodiscard]] std::vector<std::string> command_arguments() const;
-    [[nodiscard]] std::string command_line() const;
     [[nodiscard]] std::string chat_command_line() const;
     [[nodiscard]] std::string server_command_line(std::uint16_t port = 8080) const;
 
-    int generate() const;
     int chat() const;
     int serve(std::uint16_t port = 8080) const;
-    [[nodiscard]] std::string generate_text() const;
 
 private:
     PretrainedGenerationOptions options_;

@@ -6,28 +6,6 @@
 
 namespace {
 
-void builds_llama_cpp_command_line() {
-    const llm::models::PretrainedModelRunner runner({
-        .executable = "tools/llama-cli.exe",
-        .model_path = "models/tiny model.gguf",
-        .mmproj_path = "",
-        .system_prompt = "Answer in English.",
-        .prompt = "hello model",
-        .max_tokens = 32,
-        .temperature = 0.7F,
-    });
-
-    const auto command = runner.command_line();
-
-    assert(command.find("tools/llama-cli.exe") != std::string::npos);
-    assert(command.find("--model \"models/tiny model.gguf\"") != std::string::npos);
-    assert(command.find("--system-prompt \"Answer in English.\"") != std::string::npos);
-    assert(command.find("--prompt \"hello model\"") != std::string::npos);
-    assert(command.find("--n-predict 32") != std::string::npos);
-    assert(command.find("--temp 0.7") != std::string::npos);
-    assert(command.find("--reasoning off") != std::string::npos);
-}
-
 void rejects_missing_model_path() {
     try {
         (void)llm::models::PretrainedModelRunner({
@@ -62,7 +40,17 @@ void builds_persistent_chat_command_line() {
 
     const auto command = runner.chat_command_line();
 
+    assert(command.find("tools/llama.cpp/llama-cli.exe") != std::string::npos);
+    assert(command.find("--model models/model.gguf") != std::string::npos ||
+           command.find("--model \"models/model.gguf\"") != std::string::npos);
+    assert(command.find("--system-prompt \"Answer in English.\"") != std::string::npos);
+    assert(command.find("--prompt Hello") != std::string::npos ||
+           command.find("--prompt \"Hello\"") != std::string::npos);
+    assert(command.find("--n-predict 128") != std::string::npos);
+    assert(command.find("--temp 0.2") != std::string::npos);
     assert(command.find("--conversation") != std::string::npos);
+    assert(command.find("--single-turn") == std::string::npos);
+    assert(command.find("--no-conversation") == std::string::npos);
     assert(command.find("--reasoning off") != std::string::npos);
 }
 
@@ -90,7 +78,6 @@ void builds_llama_server_command_line() {
 }  // namespace
 
 void run_pretrained_model_tests() {
-    builds_llama_cpp_command_line();
     rejects_missing_model_path();
     quotes_arguments_with_double_quotes();
     builds_persistent_chat_command_line();

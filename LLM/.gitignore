@@ -17,14 +17,3 @@ out/
 *.ckpt
 *.onnx
 logs/*
-outputs/*
-models/*
-data/*
-!data/external/
-!data/processed/
-!data/raw/
-!data/external/.gitkeep
-!data/processed/.gitkeep
-!data/raw/.gitkeep
-!outputs/.gitkeep
-!models/.gitkeep

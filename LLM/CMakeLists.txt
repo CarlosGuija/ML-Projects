@@ -12,10 +12,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(llm_core
     src/llm_project/chat/chat_session.cpp
-    src/llm_project/data/character_vocabulary.cpp
-    src/llm_project/inference/tokenizer.cpp
     src/llm_project/models/pretrained_model.cpp
-    src/llm_project/rag/retrieval.cpp
 )
 
 target_include_directories(llm_core
@@ -35,12 +32,10 @@ enable_testing()
 
 add_executable(llm_tests
     tests/chat_session_tests.cpp
-    tests/character_vocabulary_tests.cpp
     tests/pretrained_model_tests.cpp
-    tests/rag_retrieval_tests.cpp
-    tests/tokenizer_tests.cpp
+    tests/test_main.cpp
 )
 
 target_link_libraries(llm_tests PRIVATE llm_core)
 
-add_test(NAME tokenizer_tests COMMAND llm_tests)
+add_test(NAME llm_tests COMMAND llm_tests)
