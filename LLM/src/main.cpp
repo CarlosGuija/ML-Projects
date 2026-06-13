@@ -1,4 +1,3 @@
-#include "llm_project/chat/chat_session.hpp"
 #include "llm_project/models/pretrained_model.hpp"
 
 #include <cstdint>
@@ -23,6 +22,12 @@ void print_usage() {
         << "  LLAMA_CPP_CLI    path to llama-cli.exe\n"
         << "  LOCAL_LLM_MODEL  path to a local GGUF model\n"
         << "  LOCAL_LLM_MMPROJ path to a local multimodal projector GGUF\n";
+}
+
+std::string default_system_prompt() {
+    return "You are a helpful local assistant. Answer in clear, concise English. "
+           "Do not output thinking, analysis, chain-of-thought, or hidden reasoning. "
+           "Return only the final answer.";
 }
 
 std::optional<std::string> argument_value(const int argc, char* argv[], const std::string& name) {
@@ -145,7 +150,7 @@ int run_chat(const int argc, char* argv[]) {
 
     const auto prompt = argument_value(argc, argv, "--prompt").value_or("Hello");
     auto options = pretrained_options_from_args(argc, argv, prompt, 256);
-    options.system_prompt = llm::chat::ChatSession::default_system_prompt();
+    options.system_prompt = default_system_prompt();
 
     const llm::models::PretrainedModelRunner runner(options);
     return runner.chat();
