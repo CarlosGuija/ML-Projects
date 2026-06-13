@@ -48,10 +48,12 @@ void builds_persistent_chat_command_line() {
            command.find("--prompt \"Hello\"") != std::string::npos);
     assert(command.find("--n-predict 128") != std::string::npos);
     assert(command.find("--temp 0.2") != std::string::npos);
-    assert(command.find("--conversation") != std::string::npos);
-    assert(command.find("--single-turn") == std::string::npos);
-    assert(command.find("--no-conversation") == std::string::npos);
-    assert(command.find("--reasoning off") != std::string::npos);
+    assert(command.find("--system-prompt") != std::string::npos);
+    assert(command.find("--prompt Hello") != std::string::npos ||
+           command.find("--prompt \"Hello\"") != std::string::npos);
+    assert(command.find("--conversation") == std::string::npos);
+    assert(command.find("--simple-io") == std::string::npos);
+    assert(command.find("--reasoning") == std::string::npos);
 }
 
 void builds_llama_server_command_line() {
@@ -69,7 +71,7 @@ void builds_llama_server_command_line() {
            command.find("tools/llama.cpp/llama-server.exe") != std::string::npos);
     assert(command.find("--host 127.0.0.1") != std::string::npos);
     assert(command.find("--port 9090") != std::string::npos);
-    assert(command.find("--reasoning off") != std::string::npos);
+    assert(command.find("--reasoning") == std::string::npos);
     assert(command.find("--mmproj models/mmproj.gguf") != std::string::npos ||
            command.find("--mmproj \"models/mmproj.gguf\"") != std::string::npos);
     assert(command.find("--system-prompt") == std::string::npos);

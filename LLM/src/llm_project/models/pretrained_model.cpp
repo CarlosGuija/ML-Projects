@@ -49,11 +49,6 @@ std::vector<std::string> chat_arguments(const PretrainedGenerationOptions& optio
         to_string(options.max_tokens),
         "--temp",
         to_string(options.temperature),
-        "--no-display-prompt",
-        "--simple-io",
-        "--reasoning",
-        "off",
-        "--conversation",
     });
 
     return arguments;
@@ -101,8 +96,6 @@ std::string PretrainedModelRunner::server_command_line(const std::uint16_t port)
         "127.0.0.1",
         "--port",
         std::to_string(port),
-        "--reasoning",
-        "off",
     };
 
     if (!options_.mmproj_path.empty()) {
